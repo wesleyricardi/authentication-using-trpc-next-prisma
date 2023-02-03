@@ -1,0 +1,454 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgres"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Post {
+  id    String @id @default(uuid())
+  title String
+  text  String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  username       String   @unique
+  password       String
+  name           String
+  email          String   @unique
+  phone          String   @unique
+  document       String   @unique
+  birthDate      DateTime
+  profileImage   Image?   @relation(fields: [profileImageId], references: [id])
+  profileImageId Int?
+
+  active  Boolean @default(false)
+  blocked Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  UserRecoveryCodes   UserRecoveryCode[]   @ignore
+  UserActivationCodes UserActivationCode[] @ignore
+}
+
+model UserRecoveryCode {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  code      String
+  expiresAt DateTime
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([code], type: Hash)
+}
+
+model UserActivationCode {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  code      String
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([code], type: Hash)
+}
+
+model CompanyInfo {
+  id           Int    @id @default(autoincrement())
+  name         String
+  socialName   String
+  email        String @unique
+  phone        String @unique
+  cellPhone    String @unique
+  cnpj         BigInt @unique
+  address      String
+  number       String
+  complement   String
+  neighborhood String
+  city         String
+  state        String
+  zipCode      String
+  country      String
+
+  facebook  String
+  instagram String
+  whatsapp  String
+
+  logo           Image @relation("logo", fields: [logoId], references: [id])
+  logoId         Int
+  banner         Image @relation("banner", fields: [bannerId], references: [id])
+  bannerId       Int
+  mobileBanner   Image @relation("mobileBanner", fields: [mobileBannerId], references: [id])
+  mobileBannerId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Header {
+  id    Int   @id @default(autoincrement())
+  style Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  container HeaderContainer[]
+
+  pages     Page[]    @ignore
+}
+
+model HeaderContainer {
+  id    Int   @id @default(autoincrement())
+  order Int?
+  style Json?
+
+  section    Section @relation(fields: [SectionsId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  SectionsId Int
+
+  header Header[] @ignore
+}
+
+model Footer {
+  id    Int   @id @default(autoincrement())
+  style Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+  
+  container FooterContainer[]
+
+  pages     Page[]   @ignore
+}
+
+model FooterContainer {
+  id    Int   @id @default(autoincrement())
+  order Int?
+  style Json?
+
+  section    Section @relation(fields: [SectionsId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  SectionsId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  footer Footer[] @ignore
+}
+
+model Aside {
+  id    Int   @id @default(autoincrement())
+  style Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  container AsideContainer[]
+
+  pages     Page[]  @ignore
+}
+
+model AsideContainer {
+  id    Int   @id @default(autoincrement())
+  order Int?
+  style Json?
+
+  section    Section @relation(fields: [SectionsId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  SectionsId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  aside Aside[] @ignore
+}
+
+model Nav {
+  id       Int    @id @default(autoincrement())
+  name     String
+  type     String //burger|list|dropdown|horizontal
+  style    Json?
+  location String // header|footer|sidebar
+
+  items                 NavItem[]
+  sectionContent        SectionsContentValue @relation(fields: [sectionContentValueId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionContentValueId Int                  @unique
+}
+
+model NavItem {
+  id    Int    @id @default(autoincrement())
+  icon  String
+  order Int?
+
+  active          Boolean @default(true)
+  subPagesVisible Boolean @default(false)
+
+  pages  Page @relation(fields: [pageId], references: [id])
+  pageId Int
+  
+  nav    Nav  @relation(fields: [navId], references: [id])  @ignore
+  navId  Int  @ignore
+}
+
+model Page {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+  path String @default("/pages/[slug]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  header   Header?          @relation(fields: [headerId], references: [id])
+  headerId Int?
+  footer   Footer?          @relation(fields: [footerId], references: [id])
+  footerId Int?
+  aside    Aside[]
+  main     SectionsOnPage[]
+
+  navItens NavItem[]       @ignore
+
+  @@unique([id, path])
+}
+
+model SectionsOnPage {
+  id        Int     @id @default(autoincrement())
+  page      Page    @relation(fields: [pageId, pagePath], references: [id, path], onDelete: Cascade)
+  pageId    Int
+  pagePath  String
+  section   Section @relation(fields: [sectionId], references: [id])
+  sectionId Int
+  slug      String
+
+  path    String  @default("[pagePath]#[slug]")
+  subPage Boolean @default(false)
+}
+
+model Section {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  content SectionsContent[]
+
+  pages             SectionsOnPage[] @ignore
+  HeaderContainer   HeaderContainer[] @ignore
+  FooterContainer   FooterContainer[] @ignore
+  AsideContainer    AsideContainer[] @ignore
+  CarouselContainer CarouselContainer[] @ignore
+  ListContainer     ListContainer[] @ignore
+}
+
+model SectionsContent {
+  id        Int     @id @default(autoincrement())
+  style     Json?
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionId Int
+  type      String //shortText|paragraph|icon|image|gallery|video|carousel|list|button|link
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  value SectionsContentValue?
+}
+
+model SectionsContentValue {
+  id               Int                     @id @default(autoincrement())
+  sectionContent   SectionsContent         @relation(fields: [sectionContentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionContentId Int                     @unique
+  shortText        String?
+  paragraph        String?
+  icon             String?
+  image            ImageOnSectionsContent?
+  gallery          Gallery?
+  video            Video?
+  carousel         Carousel?
+  list             List?
+  button           Button?
+  link             Link?
+  nav              Nav?
+}
+
+model ImageOnSectionsContent {
+  id                    Int                  @id @default(autoincrement())
+  image                 Image                @relation(fields: [imageId], references: [id], onDelete: NoAction, onUpdate: Cascade)
+  imageId               Int
+  sectionContent        SectionsContentValue @relation(fields: [sectionContentValueId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionContentValueId Int                  @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Gallery {
+  id               Int                  @id @default(autoincrement())
+  name             String
+  sectionContent   SectionsContentValue @relation(fields: [sectionContentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionContentId Int                  @unique
+  type             String //model1|model2|model3
+  typeId           Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  images Image[]
+}
+
+model Video {
+  id          Int    @id @default(autoincrement())
+  name        String
+  description String
+  url         String
+  provider    String
+  duration    String //vercel/ms
+  width       String
+  height      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  sectionContent   SectionsContentValue @relation(fields: [sectionContentId], references: [id], onDelete: Cascade, onUpdate: Cascade) @ignore
+  sectionContentId Int                  @unique @ignore
+}
+
+model Carousel {
+  id               Int                  @id @default(autoincrement())
+  name             String
+  sectionContent   SectionsContentValue @relation(fields: [sectionContentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionContentId Int                  @unique
+  type             String //model1|model2|model3
+  typeId           Int
+  style            Json?
+  options          Json // {autoplay:true|false, dots: {visible:true|false}, infinite:true|false, speed:300ms, arrows: {icon, style, visible: {always, never, auto}}}
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  sections CarouselContainer[]
+}
+
+model CarouselContainer {
+  id    Int   @id @default(autoincrement())
+  order Int?
+  style Json?
+
+  section    Section @relation(fields: [SectionsId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  SectionsId Int
+
+  carousel   Carousel? @relation(fields: [carouselId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  carouselId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model List {
+  id               Int                  @id @default(autoincrement())
+  name             String
+  sectionContent   SectionsContentValue @relation(fields: [sectionContentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionContentId Int                  @unique
+  style            Json?
+  type             String // unordered|ordered|description
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  items ListContainer[]
+}
+
+model ListContainer {
+  id    Int   @id @default(autoincrement())
+  order Int?
+  style Json?
+
+  section    Section @relation(fields: [SectionsId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  SectionsId Int
+
+  list   List? @relation(fields: [listId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  listId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Button {
+  id               Int                  @id @default(autoincrement())
+  name             String
+  sectionContent   SectionsContentValue @relation(fields: [sectionContentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionContentId Int                  @unique
+  style            Json?
+  icon             String?
+  type             String // button|submit|reset
+  contentType      String // text|icon|image
+  content          ButtonLinkContent        @relation(fields: [contentId], references: [id])
+  contentId        Int                  @unique
+  url              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Link {
+  id               Int                  @id @default(autoincrement())
+  name             String
+  sectionContent   SectionsContentValue @relation(fields: [sectionContentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sectionContentId Int                  @unique
+  style            Json?
+  contentType      String // text|icon|image
+  content          ButtonLinkContent        @relation(fields: [contentId], references: [id])
+  contentId        Int
+  url              String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model ButtonLinkContent {
+  id    Int            @id @default(autoincrement())
+  text  String?
+  icon  String?
+  image ImageOnButtonLink?
+
+  button Button[] @ignore
+  link   Link[]  @ignore
+}
+
+model ImageOnButtonLink {
+  id              Int           @id @default(autoincrement())
+  image           Image         @relation(fields: [imageId], references: [id])
+  imageId         Int
+  content   ButtonLinkContent @relation(fields: [fatherId], references: [id], onDelete: Cascade, onUpdate: Cascade) @ignore
+  fatherId Int           @unique @ignore
+}
+
+
+////// REUSABLE MODELS //////
+model Image {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  formats     Json //{thumbnail, small, medium, large: { ext, url, hash, mime, name, path, size, width, height}}
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  userProfile            User[]                   @ignore
+  logo                   CompanyInfo[]            @ignore        @relation("logo")
+  banner                 CompanyInfo[]            @ignore        @relation("banner")
+  mobileBanner           CompanyInfo[]            @ignore        @relation("mobileBanner")
+  imageOnSectionsContent ImageOnSectionsContent[] @ignore
+  gallery                Gallery[]                @ignore
+  ImageOnButtonLink      ImageOnButtonLink[]      @ignore
+}
